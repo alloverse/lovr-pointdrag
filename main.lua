@@ -10,7 +10,8 @@ local font = lovr.graphics.newFont(32)
 box = {
   position = lovr.math.newVec3(-0.25, 1.5, -1.25),
   size = lovr.math.newVec3(0.15, 0.25, 0.40),
-  offset = lovr.math.newVec3()
+  offset = lovr.math.newVec3(),
+  distance = 0
 }
 
 function box:draw()
@@ -21,7 +22,8 @@ end
 function box:select(hand)
   self:deselect(self.heldBy)
   self.heldBy = hand
-  self.offset:set(self.position - hand.from)
+  self.offset:set(self.position - hand.to)
+  self.distance = (hand.to - hand.from):length()
 end
 function box:deselect(hand)
   if self.heldBy == hand then
@@ -30,8 +32,14 @@ function box:deselect(hand)
 end
 function box:update()
   if self.heldBy then
-    self.position:set(self.heldBy.from + self.offset)
+    local straightAhead = lovr.math.vec3(0, 0, -1)
+    local handRotation = lovr.math.mat4():rotate(lovr.headset.getOrientation(self.heldBy.device))
+    local pointedDirection = handRotation:mul(straightAhead)
+    local distantPoint = lovr.math.newVec3(pointedDirection):mul(self.distance):add(self.heldBy.from)
+
+    self.position:set(distantPoint + self.offset)
   end
+  self.collider:setPosition(self.position)
 end
 
 -- global
