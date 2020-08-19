@@ -1,0 +1,3 @@
+[submodule "letters"]
+	path = letters
+	url = https://github.com/alloverse/lovr-letters.git
