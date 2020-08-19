@@ -9,12 +9,29 @@ local font = lovr.graphics.newFont(32)
 
 box = {
   position = lovr.math.newVec3(-0.25, 1.5, -1.25),
-  size = lovr.math.newVec3(0.15, 0.25, 0.40)
+  size = lovr.math.newVec3(0.15, 0.25, 0.40),
+  offset = lovr.math.newVec3()
 }
 
 function box:draw()
   lovr.graphics.setColor(0.7, 0.7, 0.9)
   lovr.graphics.box('fill', box.position, box.size)
+end
+
+function box:select(hand)
+  self:deselect(self.heldBy)
+  self.heldBy = hand
+  self.offset:set(self.position - hand.from)
+end
+function box:deselect(hand)
+  if self.heldBy == hand then
+    self.heldBy = nil
+  end
+end
+function box:update()
+  if self.heldBy then
+    self.position:set(self.heldBy.from + self.offset)
+  end
 end
 
 -- global
