@@ -12,8 +12,7 @@ local font = lovr.graphics.newFont(32)
 -- box and moving
 
 box = {
-  position = lovr.math.newVec3(-0.25, 1.5, -1.25),
-  rotation = lovr.math.newQuat(),
+  transform = lovr.math.newMat4():translate(-0.25, 1.5, -1.25),
   size = lovr.math.newVec3(0.15, 0.25, 0.40),
   offset = lovr.math.newVec3(),
   distance = 0,
@@ -22,15 +21,19 @@ box = {
 
 function box:draw()
   lovr.graphics.setColor(0.7, 0.7, 0.9)
-  lovr.graphics.box('fill', self.position, self.size, self.rotation)
+
+  local x, y, z, w, d, h, a, ax, ay, az = self.transform:unpack()
+  lovr.graphics.box('fill', x, y, z, self.size, a, ax, ay, az)
 end
 
 function box:select(hand)
+  local position = lovr.math.vec3() * self.transform
+  local rotation = lovr.math.quat() * self.transform
   self:deselect(self.heldBy)
   self.heldBy = hand
-  self.offset:set(self.position - hand.to)
+  self.offset:set(position - hand.to)
   local handRot = lovr.math.quat(lovr.headset.getOrientation(self.heldBy.device))
-  self.rOffset:set(qdiff(handRot, self.rotation))
+  self.rOffset:set(qdiff(handRot, rotation))
   self.distance = (hand.to - hand.from):length()
 end
 function box:deselect(hand)
@@ -45,11 +48,14 @@ function box:update()
     local handRotation = lovr.math.mat4():rotate(handRotationQ)
     local pointedDirection = handRotation:mul(straightAhead)
     local distantPoint = lovr.math.newVec3(pointedDirection):mul(self.distance):add(self.heldBy.from)
-    self.position:set(distantPoint + self.offset)
-    self.rotation:set(lovr.math.quat(self.rOffset) * handRotationQ)
+
+    self.transform.set(
+      lovr.math.mat4():translate(distantPoint + self.offset) *
+      lovr.math.quat(self.rOffset) * 
+      handRotation
+    )
   end
-  self.collider:setPosition(self.position)
-  self.collider:setOrientation(self.rotation)
+  self.collider:setPose(self.transform:unpack())
 end
 
 -- grid
@@ -92,8 +98,7 @@ end
 -- global
 function lovr.load()
   letters.load()
-
-  box.collider = letters.world:newBoxCollider(box.position.x, box.position.y, box.position.z, box.size.x, box.size.y, box.size.z)
+  box.collider = letters.world:newBoxCollider(0, 0, 0, box.size.x, box.size.y, box.size.z)
   box.collider:setUserData(box)
 
   shader = lovr.graphics.newShader('standard')
