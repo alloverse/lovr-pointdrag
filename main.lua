@@ -20,16 +20,18 @@ box = {
 }
 
 function box:draw()
-  lovr.graphics.setColor(0.7, 0.7, 0.9)
+  lovr.graphics.setColor(self.selected and 0.9 or 0.7, 0.7, self.selected and 0.7 or 0.9)
 
   local x, y, z, w, d, h, a, ax, ay, az = self.transform:unpack()
   lovr.graphics.box('fill', x, y, z, self.size, a, ax, ay, az)
 end
 
 function box:select(hand)
-  local position = lovr.math.vec3() * self.transform
-  local rotation = lovr.math.quat() * self.transform
-  self:deselect(self.heldBy)
+  self:deselect(self.heldBy) -- if held by another hand
+  self.selected = true
+  local x, y, z, w, d, h, a, ax, ay, az = self.transform:unpack()
+  local position = lovr.math.vec3(x, y, z)
+  local rotation = lovr.math.quat(a, ax, ay, az)
   self.heldBy = hand
   self.offset:set(position - hand.to)
   local handRot = lovr.math.quat(lovr.headset.getOrientation(self.heldBy.device))
@@ -38,6 +40,7 @@ function box:select(hand)
 end
 function box:deselect(hand)
   if self.heldBy == hand then
+    self.selected = false
     self.heldBy = nil
   end
 end
@@ -49,10 +52,8 @@ function box:update()
     local pointedDirection = handRotation:mul(straightAhead)
     local distantPoint = lovr.math.newVec3(pointedDirection):mul(self.distance):add(self.heldBy.from)
 
-    self.transform.set(
-      lovr.math.mat4():translate(distantPoint + self.offset) *
-      lovr.math.quat(self.rOffset) * 
-      handRotation
+    self.transform:set(
+      lovr.math.mat4():translate(distantPoint + self.offset):rotate(self.rOffset) * handRotation
     )
   end
   self.collider:setPose(self.transform:unpack())
