@@ -23,7 +23,7 @@ local font = lovr.graphics.newFont(32)
 box = {
   transform = lovr.math.newMat4():translate(-0.25, 1.5, -1.25),
   size = lovr.math.newVec3(0.15, 0.25, 0.40),
-  offset = lovr.math.newVec3(),
+  offset = lovr.math.newMat4(),
   distance = 0,
   rOffset = lovr.math.newMat4()
 }
@@ -42,7 +42,7 @@ function box:select(hand)
   local position = lovr.math.vec3(x, y, z)
   local rotation = lovr.math.quat(a, ax, ay, az)
   self.heldBy = hand
-  self.offset:set(position - hand.to)
+  self.offset:set(lovr.math.mat4():translate(position - hand.to))
   local handRot = lovr.math.quat(lovr.headset.getOrientation(self.heldBy.device))
   self.rOffset:set(lovr.math.mat4():rotate(qdiff(handRot, rotation)))
   self.distance = (hand.to - hand.from):length()
@@ -68,7 +68,7 @@ function box:update()
         :translate(distantPoint)
         :mul(handRotation)
         :mul(self.rOffset)
-        :translate(self.offset)
+        :mul(self.offset)
     )
   end
   local x, y, z, w, h, d, a, ax, ay, az = self.transform:unpack()
