@@ -25,7 +25,7 @@ box = {
   size = lovr.math.newVec3(0.15, 0.25, 0.40),
   offset = lovr.math.newVec3(),
   distance = 0,
-  rOffset = lovr.math.newQuat()
+  rOffset = lovr.math.newMat4()
 }
 
 function box:draw()
@@ -44,7 +44,7 @@ function box:select(hand)
   self.heldBy = hand
   self.offset:set(position - hand.to)
   local handRot = lovr.math.quat(lovr.headset.getOrientation(self.heldBy.device))
-  self.rOffset:set(qdiff(handRot, rotation))
+  self.rOffset:set(lovr.math.mat4():rotate(qdiff(handRot, rotation)))
   self.distance = (hand.to - hand.from):length()
 end
 function box:deselect(hand)
@@ -64,7 +64,11 @@ function box:update()
     local distantPoint = lovr.math.newVec3(pointedDirection):mul(self.distance):add(self.heldBy.from)
 
     self.transform:set(
-      lovr.math.mat4():translate(distantPoint):mul(handRotation):rotate(self.rOffset):translate(self.offset)
+      lovr.math.mat4()
+        :translate(distantPoint)
+        :mul(handRotation)
+        :mul(self.rOffset)
+        :translate(self.offset)
     )
   end
   local x, y, z, w, h, d, a, ax, ay, az = self.transform:unpack()
