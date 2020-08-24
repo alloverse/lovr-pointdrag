@@ -5,6 +5,15 @@ function qdiff(q1, q2)
   return lovr.math.quat(q2) * lovr.math.quat(q1):normalize():conjugate()
 end
 
+function clamp(val, min, max)
+	if val < min then
+		val = min
+	elseif max < val then
+		val = max
+	end
+	return val
+end
+
 -- state
 local drawables = {}
 local font = lovr.graphics.newFont(32)
@@ -46,6 +55,8 @@ function box:deselect(hand)
 end
 function box:update()
   if self.heldBy then
+    stickX, stickY = lovr.headset.getAxis(self.heldBy.device, "thumbstick")
+    self.distance = clamp(self.distance + stickY/10, 0, 10)
     local straightAhead = lovr.math.vec3(0, 0, -1)
     local handRotationQ = lovr.math.quat(lovr.headset.getOrientation(self.heldBy.device))
     local handRotation = lovr.math.mat4():rotate(handRotationQ)
@@ -53,10 +64,11 @@ function box:update()
     local distantPoint = lovr.math.newVec3(pointedDirection):mul(self.distance):add(self.heldBy.from)
 
     self.transform:set(
-      lovr.math.mat4():translate(distantPoint + self.offset):rotate(self.rOffset) * handRotation
+      lovr.math.mat4():translate(distantPoint):mul(handRotation):rotate(self.rOffset):translate(self.offset)
     )
   end
-  self.collider:setPose(self.transform:unpack())
+  local x, y, z, w, h, d, a, ax, ay, az = self.transform:unpack()
+  self.collider:setPose(x, y, z, a, ax, ay, az)
 end
 
 -- grid
@@ -130,5 +142,13 @@ function lovr.draw()
   letters.draw()
   for i, thing in ipairs(drawables) do
     thing:draw()
+  end
+
+  -- debug draw colliders
+  lovr.graphics.setColor(0, 1, 0, 1)
+  for _, collider in ipairs({box.collider}) do
+    local x, y, z, a, ax, ay, az = collider:getPose()
+    local w, h, d = collider:getShapes()[1]:getDimensions()
+    lovr.graphics.box("line", x, y, z, w, h, d, a, ax, ay, az)
   end
 end
