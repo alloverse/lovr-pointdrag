@@ -23,29 +23,25 @@ local font = lovr.graphics.newFont(32)
 box = {
   transform = lovr.math.newMat4():translate(-0.25, 1.5, -1.25),
   size = lovr.math.newVec3(0.15, 0.25, 0.40),
-  offset = lovr.math.newMat4(),
-  distance = 0,
-  rOffset = lovr.math.newMat4()
+  offset = lovr.math.newMat4()
 }
 
 function box:draw()
   lovr.graphics.setColor(self.selected and 0.9 or 0.7, 0.7, self.selected and 0.7 or 0.9)
-
-  local x, y, z, w, d, h, a, ax, ay, az = self.transform:unpack()
-  lovr.graphics.box('fill', x, y, z, self.size, a, ax, ay, az)
+  lovr.graphics.push()
+  lovr.graphics.transform(self.transform)
+  lovr.graphics.box('fill', 0, 0, 0, self.size)
+  
+  lovr.graphics.cylinder(0, self.size.y, -self.size.z/2, self.size.y, 3.14/2, 1, 0, 0, 0.0, 0.1)
+  lovr.graphics.pop()
 end
 
 function box:select(hand)
   self:deselect(self.heldBy) -- if held by another hand
   self.selected = true
-  local x, y, z, w, d, h, a, ax, ay, az = self.transform:unpack()
-  local position = lovr.math.vec3(x, y, z)
-  local rotation = lovr.math.quat(a, ax, ay, az)
   self.heldBy = hand
-  self.offset:set(lovr.math.mat4():translate(position - hand.to))
-  local handRot = lovr.math.quat(lovr.headset.getOrientation(self.heldBy.device))
-  self.rOffset:set(lovr.math.mat4():rotate(qdiff(handRot, rotation)))
-  self.distance = (hand.to - hand.from):length()
+  local handTransform = lovr.math.mat4(lovr.headset.getPose(hand.device))
+  self.offset:set(handTransform:invert()):mul(self.transform)
 end
 function box:deselect(hand)
   if self.heldBy == hand then
@@ -56,20 +52,8 @@ end
 function box:update()
   if self.heldBy then
     stickX, stickY = lovr.headset.getAxis(self.heldBy.device, "thumbstick")
-    self.distance = clamp(self.distance + stickY/10, 0, 10)
-    local straightAhead = lovr.math.vec3(0, 0, -1)
-    local handRotationQ = lovr.math.quat(lovr.headset.getOrientation(self.heldBy.device))
-    local handRotation = lovr.math.mat4():rotate(handRotationQ)
-    local pointedDirection = handRotation:mul(straightAhead)
-    local distantPoint = lovr.math.newVec3(pointedDirection):mul(self.distance):add(self.heldBy.from)
-
-    self.transform:set(
-      lovr.math.mat4()
-        :translate(distantPoint)
-        :mul(handRotation)
-        :mul(self.rOffset)
-        :mul(self.offset)
-    )
+    local handTransform = lovr.math.mat4(lovr.headset.getPose(self.heldBy.device))
+    self.transform:set(handTransform):mul(self.offset)
   end
   local x, y, z, w, h, d, a, ax, ay, az = self.transform:unpack()
   self.collider:setPose(x, y, z, a, ax, ay, az)
@@ -142,6 +126,9 @@ function lovr.draw()
   lovr.graphics.setDepthTest('lequal', true)
   lovr.graphics.clear()
   lovr.graphics.setShader(shader)
+
+  lovr.graphics.setColor(1,1,1)
+  lovr.graphics.box("fill", 0,0,0, 0.1, 0.1, 0.1)
 
   letters.draw()
   for i, thing in ipairs(drawables) do
