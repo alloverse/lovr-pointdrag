@@ -22,10 +22,14 @@ local font = lovr.graphics.newFont(32)
 
 Box = {
   selected = false,
-  parent = nil
+  parent = nil,
+  constraints = {
+    position = lovr.math.newVec3(1,1,1),
+    rotation = lovr.math.newVec3(1,1,1)
+  }
 }
 
-function Box:new(x, y, z, w, h, d)
+function Box:new(x, y, z, w, h, d, constraints)
   o = {}
   setmetatable(o, self)
   self.__index = self
@@ -35,6 +39,7 @@ function Box:new(x, y, z, w, h, d)
   o.collider = letters.world:newBoxCollider(0, 0, 0, o.size.x, o.size.y, o.size.z)
   o.collider:setUserData(o)
   o.children = {}
+  o.constraints = constraints
   return o
 end
 
@@ -84,6 +89,20 @@ function Box:deselect(hand)
     self.heldBy = nil
   end
 end
+
+function Box:_constrain(newTransform)
+  -- figure out how much of new transform to use
+  local oldT = self.transform:mul(lovr.math.vec3())
+  local newT = newTransform:mul(lovr.math.vec3())
+  local inverseConstraint = lovr.math.vec3(1,1,1) - self.constraints.position
+  print("inverse", inverseConstraint.x, inverseConstraint.y, inverseConstraint.z)
+  local constrainedTranslation = oldT * inverseConstraint + newT * self.constraints.position
+
+  -- todo: do the same thing for rotation
+
+  return lovr.math.mat4():translate(constrainedTranslation)
+end
+
 function Box:update()
   if self.heldBy then
     stickX, stickY = lovr.headset.getAxis(self.heldBy.device, "thumbstick")
@@ -98,7 +117,8 @@ function Box:update()
     local handTransform = lovr.math.mat4(lovr.headset.getPose(self.heldBy.device))
     local newInWorld = handTransform:mul(self.offset)
     local newInLocal = convert(newInWorld, nil, self.parent)
-    self.transform:set(newInLocal)
+    local constrainedInLocal = self:_constrain(newInLocal)
+    self.transform:set(constrainedInLocal)
   end
   local x, y, z, w, h, d, a, ax, ay, az = self:transformInWorld():unpack()
   self.collider:setPose(x, y, z, a, ax, ay, az)
@@ -151,9 +171,18 @@ function lovr.load()
   shader = lovr.graphics.newShader('standard')
   lovr.graphics.setBackgroundColor(0.95, 0.98, 0.98)
 
-  local box = Box:new(-0.25, 1.5, -1.25, 0.15, 0.25, 0.40)
-  local head = Box:new(0, 0.15, -0.1,   0.1, 0.1, 0.1)
-  local thingie = Box:new(1, 0, 0,   0.05, 0.3, 0.1)
+  local box = Box:new(-0.25, 1.5, -1.25, 0.15, 0.25, 0.40, {
+    position = lovr.math.newVec3(0,1,1),
+    rotation = lovr.math.newVec3(0,0,1)
+  })
+  local head = Box:new(0, 0.15, -0.1,   0.1, 0.1, 0.1, {
+    position = lovr.math.newVec3(1,0,1),
+    rotation = lovr.math.newVec3(1,1,1)
+  })
+  local thingie = Box:new(1, 0, 0,   0.05, 0.3, 0.1, {
+    position = lovr.math.newVec3(1,1,1),
+    rotation = lovr.math.newVec3(1,1,0)
+  })
   table.insert(drawables, box)
   box:addChild(head)
   head:addChild(thingie)
