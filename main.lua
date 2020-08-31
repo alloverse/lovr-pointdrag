@@ -87,6 +87,14 @@ end
 function Box:update()
   if self.heldBy then
     stickX, stickY = lovr.headset.getAxis(self.heldBy.device, "thumbstick")
+
+    if math.abs(stickY) > 0.05 then
+      local translation = lovr.math.mat4():translate(0,0,-stickY*0.1)
+      local newOffset = translation * self.offset
+      if newOffset:mul(lovr.math.vec3()).z < 0 then
+        self.offset:set(newOffset)
+      end
+    end
     local handTransform = lovr.math.mat4(lovr.headset.getPose(self.heldBy.device))
     local newInWorld = handTransform:mul(self.offset)
     local newInLocal = convert(newInWorld, nil, self.parent)
