@@ -90,17 +90,68 @@ function Box:deselect(hand)
   end
 end
 
+-- https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+function quat2euler(q)
+  local x, y, z, w = q:unpack(true)
+  local angles = {0, 0, 0}
+
+  -- roll (x-axis rotation)
+  local sinr_cosp = 2 * (w * x + y * z)
+  local cosr_cosp = 1 - 2 * (x * x + y * y)
+  angles[1] = math.atan2(sinr_cosp, cosr_cosp)
+
+  -- pitch (y-axis rotation)
+  local sinp = 2 * (w * y - z * x)
+  if math.abs(sinp) >= 1 then
+      angles[2] = math.copysign(3.14159 / 2, sinp) -- use 90 degrees if out of range
+  else
+      angles[2] = math.asin(sinp)
+  end
+
+  -- yaw (z-axis rotation)
+  local siny_cosp = 2 * (w * z + x * y)
+  local cosy_cosp = 1 - 2 * (y * y + z * z)
+  angles[3] = math.atan2(siny_cosp, cosy_cosp)
+
+  return lovr.math.vec3(unpack(angles))
+end
+function euler2quat(e)
+  local yaw, pitch, roll = e:unpack()
+  local cy = math.cos(yaw * 0.5);
+  local sy = math.sin(yaw * 0.5);
+  local cp = math.cos(pitch * 0.5);
+  local sp = math.sin(pitch * 0.5);
+  local cr = math.cos(roll * 0.5);
+  local sr = math.sin(roll * 0.5);
+
+  return lovr.math.quat(
+    cr * cp * cy + sr * sp * sy,
+    sr * cp * cy - cr * sp * sy,
+    cr * sp * cy + sr * cp * sy,
+    cr * cp * sy - sr * sp * cy,
+    true
+  )
+end
+
 function Box:_constrain(newTransform)
   -- figure out how much of new transform to use
-  local oldT = self.transform:mul(lovr.math.vec3())
-  local newT = newTransform:mul(lovr.math.vec3())
-  local inverseConstraint = lovr.math.vec3(1,1,1) - self.constraints.position
-  print("inverse", inverseConstraint.x, inverseConstraint.y, inverseConstraint.z)
-  local constrainedTranslation = oldT * inverseConstraint + newT * self.constraints.position
+  local ox, oy, oz, ow, oh, od, oa, oax, oay, oaz = self.transform:unpack()
+  local nx, ny, nz, nw, nh, nd, na, nax, nay, naz = newTransform:unpack()
+  local oldT = lovr.math.vec3(ox, oy, oz)
+  local newT = lovr.math.vec3(nx, ny, nz)
+  local inversePositionConstraint = lovr.math.vec3(1,1,1) - self.constraints.position
+  local constrainedTranslation = oldT * inversePositionConstraint + newT * self.constraints.position
 
   -- todo: do the same thing for rotation
+  local oldR = lovr.math.quat(oa, oax, oay, oaz)
+  local newR = lovr.math.quat(na, nax, nay, naz)
+  local oldEuler = quat2euler(oldR)
+  local newEuler = quat2euler(newR)
+  local inverseRotationConstraint = lovr.math.vec3(1,1,1) - self.constraints.rotation
+  local constrainedEuler = oldEuler * inverseRotationConstraint + newEuler * self.constraints.rotation
+  local constrainedR = euler2quat(constrainedEuler)
 
-  return lovr.math.mat4():translate(constrainedTranslation)
+  return lovr.math.mat4():translate(constrainedTranslation):rotate(constrainedR)
 end
 
 function Box:update()
@@ -172,16 +223,16 @@ function lovr.load()
   lovr.graphics.setBackgroundColor(0.95, 0.98, 0.98)
 
   local box = Box:new(-0.25, 1.5, -1.25, 0.15, 0.25, 0.40, {
-    position = lovr.math.newVec3(0,1,1),
-    rotation = lovr.math.newVec3(0,0,1)
+    position = lovr.math.newVec3(1,1,1),
+    rotation = lovr.math.newVec3(1,1,1)
   })
   local head = Box:new(0, 0.15, -0.1,   0.1, 0.1, 0.1, {
-    position = lovr.math.newVec3(1,0,1),
+    position = lovr.math.newVec3(1,1,1),
     rotation = lovr.math.newVec3(1,1,1)
   })
   local thingie = Box:new(1, 0, 0,   0.05, 0.3, 0.1, {
     position = lovr.math.newVec3(1,1,1),
-    rotation = lovr.math.newVec3(1,1,0)
+    rotation = lovr.math.newVec3(1,1,1)
   })
   table.insert(drawables, box)
   box:addChild(head)
