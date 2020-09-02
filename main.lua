@@ -116,7 +116,7 @@ function quat2euler(q)
   return lovr.math.vec3(unpack(angles))
 end
 function euler2quat(e)
-  local yaw, pitch, roll = e:unpack()
+  local roll, pitch, yaw = e:unpack()
   local cy = math.cos(yaw * 0.5);
   local sy = math.sin(yaw * 0.5);
   local cp = math.cos(pitch * 0.5);
@@ -134,27 +134,54 @@ function euler2quat(e)
 end
 
 function Box:_constrain(newTransform)
-  -- figure out how much of new transform to use
   local ox, oy, oz, ow, oh, od, oa, oax, oay, oaz = self.transform:unpack()
   local nx, ny, nz, nw, nh, nd, na, nax, nay, naz = newTransform:unpack()
+
+  -- figure out how much of new translation to use
   local oldT = lovr.math.vec3(ox, oy, oz)
   local newT = lovr.math.vec3(nx, ny, nz)
   local inversePositionConstraint = lovr.math.vec3(1,1,1) - self.constraints.position
   local constrainedTranslation = oldT * inversePositionConstraint + newT * self.constraints.position
 
-  -- create direction vectors, and cut off the axes not wanted by the constraints
+  -- figure out how much rotation to use
   local oldR = lovr.math.quat(oa, oax, oay, oaz)
   local newR = lovr.math.quat(na, nax, nay, naz)
-  local reference = lovr.math.vec3(0.4, 0.2, -0.6):normalize()
-  local oldDir = lovr.math.vec3(reference); oldR:mul(oldDir)
-  local newDir = lovr.math.vec3(reference); newR:mul(newDir)
-
   local inverseRotationConstraint = lovr.math.vec3(1,1,1) - self.constraints.rotation
-  local constrainedDir = oldDir * inverseRotationConstraint + newDir * self.constraints.rotation
 
-  local constrainedR = lovr.math.quat(reference, constrainedDir:normalize())
+  if true then
+    -- convert to axis-angle, then cut off the axis not wanted by constraints.
+    -- this is clearly wrong but it's only a BIT glitchy; it's the best I've got.
+    local oldAxis = lovr.math.vec3(oax, oay, oaz)
+    local newAxis = lovr.math.vec3(nax, nay, naz)
+    local constrainedAxis = oldAxis * inverseRotationConstraint + newAxis * self.constraints.rotation
+    local constrainedR = lovr.math.quat(na, constrainedAxis:unpack())
+  
+    return lovr.math.mat4():translate(constrainedTranslation):rotate(constrainedR)  
 
-  return lovr.math.mat4():translate(constrainedTranslation):rotate(newR)
+  elseif false then 
+    -- create direction vectors, and cut off the axes not wanted by the constraints
+    -- um this just gimbal locks or something and removes an entire axis of rotation
+    -- forever. Maybe this is just a bad approach.
+    local reference = lovr.math.vec3(0.4, 0.2, -0.6):normalize()
+    local oldDir = lovr.math.vec3(reference); oldR:mul(oldDir)
+    local newDir = lovr.math.vec3(reference); newR:mul(newDir)
+
+    local constrainedDir = oldDir * inverseRotationConstraint + newDir * self.constraints.rotation
+
+    local constrainedR = lovr.math.quat(reference, constrainedDir:normalize())
+
+    return lovr.math.mat4():translate(constrainedTranslation):rotate(constrainedR)
+  else
+    -- convert to euler, and cut off the axes not wanted by the constraints
+    -- I think this is probably the right way to do it, but my quat/euler conversion
+    -- methods are wrong and I'm not mathy enough to fix 'em.
+    local oldEuler = quat2euler(oldR)
+    local newEuler = quat2euler(newR)
+    local constrainedEuler = oldEuler * inverseRotationConstraint + newEuler * self.constraints.rotation
+    local constrainedR = euler2quat(constrainedEuler)
+  
+    return lovr.math.mat4():translate(constrainedTranslation):rotate(constrainedR)  
+  end
 end
 
 function Box:update()
@@ -227,11 +254,11 @@ function lovr.load()
 
   local box = Box:new(-0.25, 1.5, -1.25, 0.15, 0.25, 0.40, {
     position = lovr.math.newVec3(1,1,1),
-    rotation = lovr.math.newVec3(1,1,1)
+    rotation = lovr.math.newVec3(0,1,0)
   })
   local head = Box:new(0, 0.15, -0.1,   0.1, 0.1, 0.1, {
     position = lovr.math.newVec3(1,1,1),
-    rotation = lovr.math.newVec3(1,1,1)
+    rotation = lovr.math.newVec3(1,0,0)
   })
   local thingie = Box:new(1, 0, 0,   0.05, 0.3, 0.1, {
     position = lovr.math.newVec3(1,1,1),
