@@ -148,7 +148,7 @@ function Box:_constrain(newTransform)
   local newR = lovr.math.quat(na, nax, nay, naz)
   local inverseRotationConstraint = lovr.math.vec3(1,1,1) - self.constraints.rotation
 
-  if false then
+  if true then
     -- convert to axis-angle, then cut off the axis not wanted by constraints.
     -- this is clearly wrong but it's only a BIT glitchy; it's the best I've got.
     local oldAxis = lovr.math.vec3(oax, oay, oaz)
@@ -158,7 +158,7 @@ function Box:_constrain(newTransform)
   
     return lovr.math.mat4():translate(constrainedTranslation):rotate(constrainedR)  
 
-  elseif true then 
+  elseif false then 
     -- create direction vectors, and cut off the axes not wanted by the constraints
     -- um this just gimbal locks or something and removes an entire axis of rotation
     -- forever. Maybe this is just a bad approach.
@@ -253,11 +253,11 @@ function lovr.load()
 
   local box = Box:new(-0.25, 1.5, -1.25, 0.15, 0.25, 0.40, {
     position = lovr.math.newVec3(1,1,1),
-    rotation = lovr.math.newVec3(0,1,0)
+    rotation = lovr.math.newVec3(1,1,1)
   })
   local head = Box:new(0, 0.15, -0.1,   0.1, 0.1, 0.1, {
     position = lovr.math.newVec3(1,1,1),
-    rotation = lovr.math.newVec3(1,0,0)
+    rotation = lovr.math.newVec3(1,1,1)
   })
   local thingie = Box:new(1, 0, 0,   0.05, 0.3, 0.1, {
     position = lovr.math.newVec3(1,1,1),
