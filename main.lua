@@ -142,16 +142,19 @@ function Box:_constrain(newTransform)
   local inversePositionConstraint = lovr.math.vec3(1,1,1) - self.constraints.position
   local constrainedTranslation = oldT * inversePositionConstraint + newT * self.constraints.position
 
-  -- todo: do the same thing for rotation
+  -- create direction vectors, and cut off the axes not wanted by the constraints
   local oldR = lovr.math.quat(oa, oax, oay, oaz)
   local newR = lovr.math.quat(na, nax, nay, naz)
-  local oldEuler = quat2euler(oldR)
-  local newEuler = quat2euler(newR)
-  local inverseRotationConstraint = lovr.math.vec3(1,1,1) - self.constraints.rotation
-  local constrainedEuler = oldEuler * inverseRotationConstraint + newEuler * self.constraints.rotation
-  local constrainedR = euler2quat(constrainedEuler)
+  local reference = lovr.math.vec3(0.4, 0.2, -0.6):normalize()
+  local oldDir = lovr.math.vec3(reference); oldR:mul(oldDir)
+  local newDir = lovr.math.vec3(reference); newR:mul(newDir)
 
-  return lovr.math.mat4():translate(constrainedTranslation):rotate(constrainedR)
+  local inverseRotationConstraint = lovr.math.vec3(1,1,1) - self.constraints.rotation
+  local constrainedDir = oldDir * inverseRotationConstraint + newDir * self.constraints.rotation
+
+  local constrainedR = lovr.math.quat(reference, constrainedDir:normalize())
+
+  return lovr.math.mat4():translate(constrainedTranslation):rotate(newR)
 end
 
 function Box:update()
