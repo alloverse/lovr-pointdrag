@@ -148,7 +148,7 @@ function Box:_constrain(newTransform)
   local newR = lovr.math.quat(na, nax, nay, naz)
   local inverseRotationConstraint = lovr.math.vec3(1,1,1) - self.constraints.rotation
 
-  if true then
+  if false then
     -- convert to axis-angle, then cut off the axis not wanted by constraints.
     -- this is clearly wrong but it's only a BIT glitchy; it's the best I've got.
     local oldAxis = lovr.math.vec3(oax, oay, oaz)
@@ -158,19 +158,18 @@ function Box:_constrain(newTransform)
   
     return lovr.math.mat4():translate(constrainedTranslation):rotate(constrainedR)  
 
-  elseif false then 
+  elseif true then 
     -- create direction vectors, and cut off the axes not wanted by the constraints
     -- um this just gimbal locks or something and removes an entire axis of rotation
     -- forever. Maybe this is just a bad approach.
-    local reference = lovr.math.vec3(0.4, 0.2, -0.6):normalize()
-    local oldDir = lovr.math.vec3(reference); oldR:mul(oldDir)
-    local newDir = lovr.math.vec3(reference); newR:mul(newDir)
+    local oldDir = oldR:direction()
+    local newDir = newR:direction()
 
     local constrainedDir = oldDir * inverseRotationConstraint + newDir * self.constraints.rotation
 
-    local constrainedR = lovr.math.quat(reference, constrainedDir:normalize())
+    local constrainedR = lovr.math.quat(newDir:normalize())
 
-    return lovr.math.mat4():translate(constrainedTranslation):rotate(constrainedR)
+    return lovr.math.mat4():translate(constrainedTranslation):rotate(lovr.math.quat(newR:direction()))
   else
     -- convert to euler, and cut off the axes not wanted by the constraints
     -- I think this is probably the right way to do it, but my quat/euler conversion
