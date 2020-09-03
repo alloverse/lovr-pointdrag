@@ -252,8 +252,8 @@ function lovr.load()
   lovr.graphics.setBackgroundColor(0.95, 0.98, 0.98)
 
   local box = Box:new(-0.25, 1.5, -1.25, 0.15, 0.25, 0.40, {
-    position = lovr.math.newVec3(1,1,1),
-    rotation = lovr.math.newVec3(1,1,1)
+    position = lovr.math.newVec3(1,0,1),
+    rotation = lovr.math.newVec3(0,1,0)
   })
   local head = Box:new(0, 0.15, -0.1,   0.1, 0.1, 0.1, {
     position = lovr.math.newVec3(1,1,1),
